@@ -9,25 +9,46 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # 🚨 改用 ubuntu-20.04，镜像体积更小，预装软件更少
+    runs-on: ubuntu-20.04
     steps:
-      # ========== 🧹 磁盘空间清理（保留 Android SDK 目录）==========
-      - name: Free disk space (clean up pre-installed garbage)
+      # ========== 💣 核武器级磁盘清理（删光所有能删的）==========
+      - name: Free insane amount of disk space
         if: runner.os == 'Linux'
         run: |
-          # 删除不需要的大型预装软件（保留 /usr/local/lib/android）
-          sudo rm -rf /usr/lib/jvm
-          sudo rm -rf /usr/local/.ghcup
-          sudo rm -rf /usr/local/share/powershell
+          # 删除 Android SDK（我们自己会装）
+          sudo rm -rf /usr/local/lib/android
+          # 删除 .NET 相关
           sudo rm -rf /usr/share/dotnet
+          # 删除 Haskell 工具链
+          sudo rm -rf /usr/local/.ghcup
+          # 删除 PowerShell
+          sudo rm -rf /usr/local/share/powershell
+          # 删除 Swift
           sudo rm -rf /usr/share/swift
-          sudo rm -rf /opt/hostedtoolcache
+          # 删除 AzCopy
+          sudo rm -rf /usr/local/bin/azcopy
+          # 删除 Docker 镜像（如果有）
           docker system prune -af || true
-          # 确保 Android SDK 目录存在且可写（Setup Android SDK 需要）
-          sudo mkdir -p /usr/local/lib/android
-          sudo chmod 777 /usr/local/lib/android
+          # 删除 apt 缓存
+          sudo apt clean
+          # 删除 Gradle 缓存（我们自己会下载）
+          rm -rf ~/.gradle/caches/
+          # 删除 miniconda
+          sudo rm -rf /usr/share/miniconda
+          # 删除 ghc
+          sudo rm -rf /opt/ghc
+          # 删除 Azure CLI
+          sudo rm -rf /opt/az
+          # 删除 MySQL
+          sudo rm -rf /var/lib/mysql
+          # 删除 Boost
+          sudo rm -rf /usr/local/share/boost
+          # 删除已下载的 NDK 缓存（如果有）
+          rm -rf ~/.android
+          # 查看剩余空间
           df -h /
-      # ============================================================
+      # =========================================================
 
       - name: Checkout repository
         uses: actions/checkout@v4
