@@ -1,0 +1,6 @@
+id=DeviceGuard
+name=DeviceGuard
+version=v1.1
+versionCode=1
+author=欲究竟
+description=实时监控指定应用启动与退出状态，自动清理 ano_tmp 目录；应用运行期间控制 persist 目录权限，退出后恢复；且可选进程管理
