@@ -5,9 +5,9 @@ set(CXX_FLAGS "${CXX_FLAGS} -fno-exceptions -fno-rtti -fvisibility=hidden -fvisi
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_FLAGS}")
 
-# 🚩 把 example.cpp 改成 zygisk.cpp companion.cpp
 add_library(${MODULE_NAME} SHARED zygisk.cpp companion.cpp)
 
-target_link_libraries(${MODULE_NAME} cxx log)
+# 只链接 log 库，不再需要 cxx 和 external 子目录
+target_link_libraries(${MODULE_NAME} log)
 
-add_subdirectory(external)
+# add_subdirectory(external)   ← 删掉或注释掉，不需要了
