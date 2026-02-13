@@ -1,0 +1,36 @@
+name: Build Zygisk Module
+
+on:
+  workflow_dispatch:        # 允许手动触发
+  push:
+    branches: [ "main" ]   # 可选：推送时自动编译（方便调试）
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew :module:zipRelease --stacktrace
+
+      - name: Upload module zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-release
+          path: module/build/outputs/module/module-release.zip
