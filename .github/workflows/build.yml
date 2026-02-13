@@ -1,3 +1,16 @@
+name: Aggressive cleanup ( reclaim 20+ GB )
+  if: runner.os == 'Linux'
+  run: |
+    sudo rm -rf /usr/lib/jvm
+    sudo rm -rf /usr/local/.ghcup
+    sudo rm -rf /usr/local/lib/android
+    sudo rm -rf /usr/local/share/powershell
+    sudo rm -rf /usr/share/dotnet
+    sudo rm -rf /usr/share/swift
+    sudo rm -rf /opt/hostedtoolcache
+    docker system prune -af || true
+    df -h /
+
 name: Build Zygisk Module
 
 on:
