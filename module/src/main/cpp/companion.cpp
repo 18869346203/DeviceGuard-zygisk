@@ -1,6 +1,7 @@
 #include <android/log.h>
 #include <sys/stat.h>
 #include <sys/inotify.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <string>
 #include <vector>
@@ -28,7 +29,7 @@ static std::map<std::string, bool> running_state;
 static std::map<int, std::string> wd_to_package;
 static int inotify_fd = -1;
 
-enum class CompanionCommand {
+enum class CompanionCommand : uint8_t {
     APP_STARTED = 1,
     CONFIG_CHANGED = 2,
 };
@@ -149,10 +150,6 @@ static void event_loop() {
     }
 }
 
-static bool is_module_enabled() {
-    return access("/data/local/tmp/deviceguard_enabled", F_OK) == 0;
-}
-
 static void init_existing_processes() {
     DIR* dir = opendir("/proc");
     if (!dir) return;
@@ -179,7 +176,8 @@ static void init_existing_processes() {
     closedir(dir);
 }
 
-void DeviceGuardModule::companion_handler(int socket) {
+// ✅ companion 进程入口函数（通过 Zygisk Next 的宏注册）
+void companion_handler(int socket) {
     LOGD("companion process started");
     if (!setup_inotify()) {
         LOGE("inotify init failed");
@@ -191,9 +189,51 @@ void DeviceGuardModule::companion_handler(int socket) {
     event_thread.detach();
 
     while (true) {
-        int cmd;
+        uint8_t cmd;
         if (read(socket, &cmd, sizeof(cmd)) != sizeof(cmd)) break;
-        switch ((CompanionCommand)cmd) {
+
+        switch (static_cast<CompanionCommand>(cmd)) {
             case CompanionCommand::APP_STARTED: {
-                int len;
-                if (read(socket, &len, sizeof(l
+                uint32_t len;
+                if (read(socket, &len, sizeof(len)) != sizeof(len)) break;
+                char pkg_buf[256];
+                if (read(socket, pkg_buf, len) != len) break;
+                std::string pkg(pkg_buf, len);
+                LOGD("companion: app started %s", pkg.c_str());
+                {
+                    std::lock_guard<std::mutex> lock(config_mutex);
+                    running_state[pkg] = true;
+                }
+                // 查找该应用的 PID 并添加监听
+                DIR* dir = opendir("/proc");
+                if (dir) {
+                    struct dirent* entry;
+                    while ((entry = readdir(dir)) != nullptr) {
+                        if (entry->d_type != DT_DIR) continue;
+                        int pid = atoi(entry->d_name);
+                        if (pid <= 0) continue;
+                        char cmdline_path[64];
+                        snprintf(cmdline_path, sizeof(cmdline_path), "/proc/%d/cmdline", pid);
+                        std::ifstream cmdline_file(cmdline_path);
+                        if (!cmdline_file.is_open()) continue;
+                        std::string cmdline;
+                        std::getline(cmdline_file, cmdline, '\0');
+                        cmdline_file.close();
+                        if (cmdline == pkg) {
+                            watch_process(pid, pkg);
+                            break;
+                        }
+                    }
+                    closedir(dir);
+                }
+                break;
+            }
+            case CompanionCommand::CONFIG_CHANGED: {
+                LOGD("companion: config reloaded");
+                load_config_from_file();
+                break;
+            }
+        }
+    }
+    close(socket);
+}
