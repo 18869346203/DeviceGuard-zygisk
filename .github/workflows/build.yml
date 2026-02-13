@@ -1,9 +1,9 @@
 name: Build Zygisk Module
 
 on:
-  workflow_dispatch:        # 允许手动触发
+  workflow_dispatch:
   push:
-    branches: [ "main" ]   # 可选：推送时自动编译
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -11,20 +11,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # ========== 🧹 磁盘空间清理（关键！解决 No space left on device）==========
+      # ========== 🧹 磁盘空间清理（保留 Android SDK 目录）==========
       - name: Free disk space (clean up pre-installed garbage)
         if: runner.os == 'Linux'
         run: |
+          # 删除不需要的大型预装软件（保留 /usr/local/lib/android）
           sudo rm -rf /usr/lib/jvm
           sudo rm -rf /usr/local/.ghcup
-          sudo rm -rf /usr/local/lib/android
           sudo rm -rf /usr/local/share/powershell
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/share/swift
           sudo rm -rf /opt/hostedtoolcache
           docker system prune -af || true
+          # 确保 Android SDK 目录存在且可写（Setup Android SDK 需要）
+          sudo mkdir -p /usr/local/lib/android
+          sudo chmod 777 /usr/local/lib/android
           df -h /
-      # =========================================================================
+      # ============================================================
 
       - name: Checkout repository
         uses: actions/checkout@v4
